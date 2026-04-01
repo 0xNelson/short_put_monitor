@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>THETA/DESK — Short Put Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+--bg:#0a0c0f;--bg2:#111418;--bg3:#181c22;--bg4:#1e2530;
+--border:#2a3040;--border2:#3a4560;
+--text:#e2e8f0;--text2:#8899aa;--text3:#556677;
+--green:#00d4a0;--green2:#00a87d;--green-bg:rgba(0,212,160,0.08);
+--yellow:#f5c542;--yellow-bg:rgba(245,197,66,0.08);
+--red:#ff5566;--red-bg:rgba(255,85,102,0.08);
+--blue:#4499ff;--blue-bg:rgba(68,153,255,0.08);
+--mono:'IBM Plex Mono',monospace;
+--sans:'IBM Plex Sans',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;min-height:100vh}
+
+.nav{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--bg2)}
+.nav-logo{font-family:var(--mono);font-size:14px;font-weight:600;letter-spacing:0.08em;color:var(--green)}
+.nav-logo span{color:var(--text2);font-weight:400}
+.nav-tabs{display:flex;gap:4px}
+.tab{padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--mono);color:var(--text2);border:1px solid transparent;transition:all 0.15s}
+.tab:hover{color:var(--text);background:var(--bg3)}
+.tab.active{color:var(--green);background:var(--green-bg);border-color:var(--green2)}
+.nav-time{font-family:var(--mono);font-size:11px;color:var(--text3)}
+
+.main{padding:16px 20px;display:flex;flex-direction:column;gap:14px}
+.page{display:none}.page.active{display:flex;flex-direction:column;gap:14px}
+
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px}
+.card-title{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase;margin-bottom:12px}
+
+.env-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
+.env-metric{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.env-label{font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:6px}
+.env-value{font-size:20px;font-weight:600;font-family:var(--mono)}
+.env-sub{font-size:11px;color:var(--text2);margin-top:3px}
+.c-green{color:var(--green)}.c-yellow{color:var(--yellow)}.c-red{color:var(--red)}.c-blue{color:var(--blue)}
+
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:4px;font-family:var(--mono);font-size:11px;font-weight:600}
+.badge-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green2)}
+.badge-yellow{background:var(--yellow-bg);color:var(--yellow);border:1px solid #a08020}
+.badge-red{background:var(--red-bg);color:var(--red);border:1px solid #aa2233}
+.badge-blue{background:var(--blue-bg);color:var(--blue);border:1px solid #2255aa}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+.signal-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:8px}
+.signal-name{font-family:var(--mono);font-size:12px;min-width:80px;color:var(--text)}
+.signal-track{flex:1;height:4px;background:var(--bg4);border-radius:2px;overflow:hidden}
+.signal-fill{height:100%;border-radius:2px;transition:width 0.6s ease}
+.signal-val{font-family:var(--mono);font-size:12px;min-width:50px;text-align:right}
+
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:0.08em;color:var(--text3);text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--border);text-align:left}
+.tbl td{padding:10px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:12px;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--bg3)}
+.ticker{font-weight:600;font-size:13px;color:var(--text)}
+.score-bar{display:flex;align-items:center;gap:6px}
+.score-track{width:50px;height:4px;background:var(--bg4);border-radius:2px;overflow:hidden}
+.score-fill{height:100%;border-radius:2px}
+
+.param-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.param-input-row{display:flex;flex-direction:column;gap:6px}
+.param-label{font-size:11px;font-family:var(--mono);color:var(--text3)}
+.param-select,.param-input{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 10px;width:100%;outline:none}
+.param-select:focus,.param-input:focus{border-color:var(--green2)}
+.param-output{background:var(--bg3);border:1px solid var(--green2);border-radius:10px;padding:16px;margin-top:14px}
+.param-output-title{font-family:var(--mono);font-size:11px;color:var(--green);letter-spacing:0.08em;margin-bottom:12px}
+.param-result-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.param-result{text-align:center}
+.param-result-val{font-family:var(--mono);font-size:18px;font-weight:600;color:var(--green)}
+.param-result-label{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:3px}
+.param-note{margin-top:12px;padding:10px;background:var(--bg4);border-radius:6px;font-size:11px;color:var(--text2);line-height:1.6}
+
+.pos-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px}
+.pos-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.pos-ticker{font-family:var(--mono);font-size:16px;font-weight:600}
+.pos-details{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
+.pos-detail{background:var(--bg3);border-radius:6px;padding:8px 10px}
+.pos-detail-label{font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:3px}
+.pos-detail-val{font-size:13px;font-weight:600;font-family:var(--mono)}
+.pos-action{display:flex;gap:8px;margin-top:10px}
+.action-btn{padding:6px 14px;border-radius:6px;font-family:var(--mono);font-size:11px;font-weight:600;cursor:pointer;border:1px solid;transition:all 0.15s;letter-spacing:0.05em}
+.btn-tp{color:var(--green);border-color:var(--green2);background:var(--green-bg)}
+.btn-roll{color:var(--yellow);border-color:#a08020;background:var(--yellow-bg)}
+.btn-sl{color:var(--red);border-color:#aa2233;background:var(--red-bg)}
+.action-btn:hover{filter:brightness(1.2)}
+.recommend-box{background:var(--bg4);border-left:3px solid;border-radius:0 6px 6px 0;padding:8px 12px;font-size:11px;color:var(--text2);line-height:1.6;margin-top:8px}
+
+.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.calc-result-box{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:14px}
+.calc-result-title{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.08em;margin-bottom:10px}
+.calc-big{font-family:var(--mono);font-size:28px;font-weight:600;color:var(--green)}
+.calc-breakdown{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.calc-row{display:flex;justify-content:space-between;font-size:11px;font-family:var(--mono)}
+.calc-row span:first-child{color:var(--text3)}
+.calc-row span:last-child{color:var(--text)}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div class="nav-logo">THETA<span>/DESK</span></div>
+  <div class="nav-tabs">
+    <div class="tab active" onclick="switchTab('env',this)">市況</div>
+    <div class="tab" onclick="switchTab('screen',this)">Candidates</div>
+    <div class="tab" onclick="switchTab('param',this)">參數引擎</div>
+    <div class="tab" onclick="switchTab('pos',this)">Positions</div>
+    <div class="tab" onclick="switchTab('calc',this)">計算器</div>
+  </div>
+  <div class="nav-time" id="clock">--:--:--</div>
+</div>
+
+<div class="main">
+
+<!-- PAGE 1: ENVIRONMENT -->
+<div class="page active" id="page-env">
+  <div class="env-row">
+    <div class="env-metric">
+      <div class="env-label">VIX</div>
+      <div class="env-value c-yellow">28.4</div>
+      <div class="env-sub">⚠ 偏高，premium 豐厚</div>
+    </div>
+    <div class="env-metric">
+      <div class="env-label">SPY vs 200MA</div>
+      <div class="env-value c-red">-4.2%</div>
+      <div class="env-sub">✗ 低於 200MA，謹慎</div>
+    </div>
+    <div class="env-metric">
+      <div class="env-label">部署建議</div>
+      <div class="env-value c-yellow">40%</div>
+      <div class="env-sub">最多 HK$160萬</div>
+    </div>
+    <div class="env-metric">
+      <div class="env-label">市況評級</div>
+      <div style="margin-top:6px"><span class="badge badge-yellow"><span class="dot"></span>YELLOW</span></div>
+      <div class="env-sub" style="margin-top:6px">保守部署模式</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">市場信號明細</div>
+    <div class="signal-bar">
+      <div class="signal-name">VIX Level</div>
+      <div class="signal-track"><div class="signal-fill" style="width:60%;background:var(--yellow)"></div></div>
+      <div class="signal-val c-yellow">28.4</div>
+      <span class="badge badge-yellow" style="margin-left:8px"><span class="dot"></span>中性</span>
+    </div>
+    <div class="signal-bar">
+      <div class="signal-name">SPY Trend</div>
+      <div class="signal-track"><div class="signal-fill" style="width:25%;background:var(--red)"></div></div>
+      <div class="signal-val c-red">熊市</div>
+      <span class="badge badge-red" style="margin-left:8px"><span class="dot"></span>警告</span>
+    </div>
+    <div class="signal-bar">
+      <div class="signal-name">IV Rank平均</div>
+      <div class="signal-track"><div class="signal-fill" style="width:72%;background:var(--green)"></div></div>
+      <div class="signal-val c-green">72%</div>
+      <span class="badge badge-green" style="margin-left:8px"><span class="dot"></span>良好</span>
+    </div>
+    <div class="signal-bar">
+      <div class="signal-name">Put/Call比率</div>
+      <div class="signal-track"><div class="signal-fill" style="width:55%;background:var(--yellow)"></div></div>
+      <div class="signal-val c-yellow">1.12</div>
+      <span class="badge badge-yellow" style="margin-left:8px"><span class="dot"></span>中性</span>
+    </div>
+    <div class="signal-bar">
+      <div class="signal-name">Earnings Risk</div>
+      <div class="signal-track"><div class="signal-fill" style="width:30%;background:var(--green)"></div></div>
+      <div class="signal-val c-green">低</div>
+      <span class="badge badge-green" style="margin-left:8px"><span class="dot"></span>安全</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">資金部署上限（總資金 HK$300萬）</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+      <div style="background:var(--green-bg);border:1px solid var(--green2);border-radius:8px;padding:14px;text-align:center">
+        <div style="font-size:10px;font-family:var(--mono);color:var(--green);letter-spacing:0.08em;margin-bottom:6px">GREEN 市況</div>
+        <div style="font-size:20px;font-weight:600;font-family:var(--mono);color:var(--green)">HK$210萬</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">最多 70%</div>
+      </div>
+      <div style="background:var(--yellow-bg);border:1px solid #a08020;border-radius:8px;padding:14px;text-align:center">
+        <div style="font-size:10px;font-family:var(--mono);color:var(--yellow);letter-spacing:0.08em;margin-bottom:6px">YELLOW 市況 ← 現在</div>
+        <div style="font-size:20px;font-weight:600;font-family:var(--mono);color:var(--yellow)">HK$120萬</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">最多 40%</div>
+      </div>
+      <div style="background:var(--red-bg);border:1px solid #aa2233;border-radius:8px;padding:14px;text-align:center">
+        <div style="font-size:10px;font-family:var(--mono);color:var(--red);letter-spacing:0.08em;margin-bottom:6px">RED 市況</div>
+        <div style="font-size:20px;font-weight:600;font-family:var(--mono);color:var(--red)">HK$60萬</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">最多 20%</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2: CANDIDATES -->
+<div class="page" id="page-screen">
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:0">候選名單 — Short Put</div>
+      <span class="badge badge-yellow"><span class="dot"></span>YELLOW 模式篩選</span>
+    </div>
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Ticker</th>
+          <th>Spot</th>
+          <th>IV Rank</th>
+          <th>30d IV</th>
+          <th>評分</th>
+          <th>Trend</th>
+          <th>Earnings</th>
+          <th>建議</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="ticker">SLV</div><div style="font-size:10px;color:var(--text3)">Silver ETF</div></td>
+          <td>$28.40</td>
+          <td><span class="c-green">72%</span></td>
+          <td>64%</td>
+          <td><div class="score-bar"><div class="score-track"><div class="score-fill" style="width:84%;background:var(--green)"></div></div><span class="c-green" style="font-size:11px">84</span></div></td>
+          <td><span class="badge badge-green"><span class="dot"></span>牛</span></td>
+          <td><span class="badge badge-green">安全</span></td>
+          <td><span class="badge badge-green"><span class="dot"></span>✓ 做</span></td>
+        </tr>
+        <tr>
+          <td><div class="ticker">GLD</div><div style="font-size:10px;color:var(--text3)">Gold ETF</div></td>
+          <td>$218.50</td>
+          <td><span class="c-green">68%</span></td>
+          <td>18%</td>
+          <td><div class="score-bar"><div class="score-track"><div class="score-fill" style="width:78%;background:var(--green)"></div></div><span class="c-green" style="font-size:11px">78</span></div></td>
+          <td><span class="badge badge-green"><span class="dot"></span>牛</span></td>
+          <td><span class="badge badge-green">安全</span></td>
+          <td><span class="badge badge-green"><span class="dot"></span>✓ 做</span></td>
+        </tr>
+        <tr>
+          <td><div class="ticker">XLE</div><div style="font-size:10px;color:var(--text3)">Energy ETF</div></td>
+          <td>$88.20</td>
+          <td><span class="c-yellow">58%</span></td>
+          <td>31%</td>
+          <td><div class="score-bar"><div class="score-track"><div class="score-fill" style="width:65%;background:var(--yellow)"></div></div><span class="c-yellow" style="font-size:11px">65</span></div></td>
+          <td><span class="badge badge-yellow"><span class="dot"></span>中性</span></td>
+          <td><span class="badge badge-green">安全</span></td>
+          <td><span class="badge badge-yellow"><span class="dot"></span>⚠ 謹慎</span></td>
+        </tr>
+        <tr>
+          <td><div class="ticker">AAPL</div><div style="font-size:10px;color:var(--text3)">Apple Inc</div></td>
+          <td>$172.30</td>
+          <td><span class="c-yellow">51%</span></td>
+          <td>28%</td>
+          <td><div class="score-bar"><div class="score-track"><div class="score-fill" style="width:58%;background:var(--yellow)"></div></div><span class="c-yellow" style="font-size:11px">58</span></div></td>
+          <td><span class="badge badge-red"><span class="dot"></span>熊</span></td>
+          <td><span class="badge badge-yellow">30天內</span></td>
+          <td><span class="badge badge-yellow"><span class="dot"></span>⚠ 等待</span></td>
+        </tr>
+        <tr>
+          <td><div class="ticker">SPY</div><div style="font-size:10px;color:var(--text3)">S&P 500 ETF</div></td>
+          <td>$498.60</td>
+          <td><span class="c-red">38%</span></td>
+          <td>22%</td>
+          <td><div class="score-bar"><div class="score-track"><div class="score-fill" style="width:35%;background:var(--red)"></div></div><span class="c-red" style="font-size:11px">35</span></div></td>
+          <td><span class="badge badge-red"><span class="dot"></span>熊</span></td>
+          <td><span class="badge badge-green">安全</span></td>
+          <td><span class="badge badge-red"><span class="dot"></span>✗ 跳過</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <div class="card-title">篩選標準（YELLOW 市況）</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+      <div style="background:var(--bg3);border-radius:8px;padding:10px 12px">
+        <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:4px">IV RANK</div>
+        <div style="font-size:16px;font-weight:600;font-family:var(--mono);color:var(--green)">&gt; 50%</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">premium 夠厚</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:8px;padding:10px 12px">
+        <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:4px">DELTA</div>
+        <div style="font-size:16px;font-weight:600;font-family:var(--mono);color:var(--yellow)">0.15-0.20</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">保守 OTM</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:8px;padding:10px 12px">
+        <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:4px">DTE</div>
+        <div style="font-size:16px;font-weight:600;font-family:var(--mono);color:var(--yellow)">21-30天</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">縮短 event risk</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:8px;padding:10px 12px">
+        <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:4px">每注上限</div>
+        <div style="font-size:16px;font-weight:600;font-family:var(--mono);color:var(--blue)">HK$18萬</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">15% of 120萬</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 3: PARAM ENGINE -->
+<div class="page" id="page-param">
+  <div class="card">
+    <div class="card-title">參數設計引擎</div>
+    <div class="param-grid">
+      <div class="param-input-row">
+        <div class="param-label">市況評級</div>
+        <select class="param-select" id="p-env" onchange="calcParam()">
+          <option value="green">🟢 GREEN — 積極</option>
+          <option value="yellow" selected>🟡 YELLOW — 保守</option>
+          <option value="red">🔴 RED — 極保守</option>
+        </select>
+      </div>
+      <div class="param-input-row">
+        <div class="param-label">IV Rank</div>
+        <select class="param-select" id="p-ivr" onchange="calcParam()">
+          <option value="high">高 (&gt;70%)</option>
+          <option value="mid" selected>中 (50-70%)</option>
+          <option value="low">低 (30-50%)</option>
+        </select>
+      </div>
+      <div class="param-input-row">
+        <div class="param-label">正股趨勢</div>
+        <select class="param-select" id="p-trend" onchange="calcParam()">
+          <option value="strong">強勢（50MA 之上）</option>
+          <option value="neutral" selected>中性（附近）</option>
+          <option value="weak">弱勢（50MA 之下）</option>
+        </select>
+      </div>
+      <div class="param-input-row">
+        <div class="param-label">近期急升？</div>
+        <select class="param-select" id="p-spike" onchange="calcParam()">
+          <option value="no" selected>正常</option>
+          <option value="yes">係（過去3日 &gt;5%）</option>
+        </select>
+      </div>
+      <div class="param-input-row">
+        <div class="param-label">Spot 價格 (USD)</div>
+        <input class="param-input" type="number" id="p-spot" value="28.40" oninput="calcParam()">
+      </div>
+      <div class="param-input-row">
+        <div class="param-label">總資金 (HKD 萬)</div>
+        <input class="param-input" type="number" id="p-cap" value="300" oninput="calcParam()">
+      </div>
+    </div>
+    <div class="param-output" id="param-output">
+      <div class="param-output-title">▸ 建議參數</div>
+      <div class="param-result-grid">
+        <div class="param-result"><div class="param-result-val" id="r-dte">—</div><div class="param-result-label">DTE（天）</div></div>
+        <div class="param-result"><div class="param-result-val" id="r-delta">—</div><div class="param-result-label">目標 Delta</div></div>
+        <div class="param-result"><div class="param-result-val" id="r-otm">—</div><div class="param-result-label">OTM %</div></div>
+        <div class="param-result"><div class="param-result-val" id="r-strike">—</div><div class="param-result-label">建議 Strike</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+        <div style="background:var(--bg4);border-radius:6px;padding:10px 12px">
+          <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:4px">最多部署資金</div>
+          <div style="font-size:16px;font-weight:600;font-family:var(--mono);color:var(--yellow)" id="r-deploy">—</div>
+        </div>
+        <div style="background:var(--bg4);border-radius:6px;padding:10px 12px">
+          <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:4px">建議 Contracts</div>
+          <div style="font-size:16px;font-weight:600;font-family:var(--mono);color:var(--blue)" id="r-contracts">—</div>
+        </div>
+      </div>
+      <div class="param-note" id="r-note">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 4: POSITIONS -->
+<div class="page" id="page-pos">
+  <div class="pos-card" style="border-color:var(--green2)">
+    <div class="pos-header">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="pos-ticker c-green">SLV</div>
+        <span class="badge badge-green"><span class="dot"></span>健康</span>
+      </div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--text2)">Short Put $26 • 0501</div>
+    </div>
+    <div class="pos-details">
+      <div class="pos-detail"><div class="pos-detail-label">Premium 收入</div><div class="pos-detail-val">$0.65</div></div>
+      <div class="pos-detail"><div class="pos-detail-label">當前值</div><div class="pos-detail-val">$0.31</div></div>
+      <div class="pos-detail"><div class="pos-detail-label">P&L</div><div class="pos-detail-val c-green">+52%</div></div>
+      <div class="pos-detail"><div class="pos-detail-label">DTE</div><div class="pos-detail-val">29天</div></div>
+      <div class="pos-detail"><div class="pos-detail-label">當前 Delta</div><div class="pos-detail-val">0.18</div></div>
+    </div>
+    <div class="recommend-box" style="border-color:var(--green)">
+      <strong style="color:var(--green)">▸ 建議：Take Profit</strong><br>
+      已收到 52% premium（&gt;50% 閾值），建議平倉鎖定利潤。剩餘 Theta 收益遞減，繼續持有風險回報不划算。可即時重開新 position。
+    </div>
+    <div class="pos-action">
+      <button class="action-btn btn-tp">✓ Take Profit @ $0.31</button>
+      <button class="action-btn btn-roll">↻ Roll Forward</button>
+    </div>
+  </div>
+
+  <div class="pos-card" style="border-color:#a08020">
+    <div class="pos-header">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="pos-ticker c-yellow">GLD</div>
+        <span class="badge badge-yellow"><span class="dot"></span>留意</span>
+      </div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--text2)">Short Put $205 • 0501</div>
+    </div>
+    <div class="pos-details">
+      <div class="pos-detail"><div class="pos-detail-label">Premium 收入</div><div class="pos-detail-val">$2.40</div></div>
+      <div class="pos-detail"><div class="pos-detail-label">當前值</div><div class="pos-detail-val">$1.85</div></div>
+      <div class="pos-detail"><div class="pos-detail-label">P&L</div><div class="pos-detail-val c-yellow">+23%</div></div>
+      <div class="pos-detail"><div class="pos-detail-label">DTE</div><div class="pos-detail-val">29天</div></div>
+      <div class="pos-detail"><div class="pos-detail-label">當前 Delta</div><div class="pos-detail-val c-yellow">0.32</div></div>
+    </div>
+    <div class="recommend-box" style="border-color:var(--yellow)">
+      <strong style="color:var(--yellow)">▸ 建議：監察 Delta 飄移</strong><br>
+      Delta 已升至 0.32（超出目標 0.20）。正股近期回落令 put 更接近 ITM。如 GLD 跌穿 $212，考慮 Roll Down + Out 至更低 Strike 及更遠 DTE。
+    </div>
+    <div class="pos-action">
+      <button class="action-btn btn-roll">↻ Roll Down + Out</button>
+      <button class="action-btn btn-sl">✗ Stop Loss @ $4.80</button>
+    </div>
+  </div>
+
+  <div class="pos-card" style="border-color:#aa2233">
+    <div class="pos-header">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="pos-ticker c-red">XLE</div>
+        <span class="badge badge-red"><span class="dot"></span>危險</span>
+      </div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--text2)">Short Put $82 • 0418</div>
+    </div>
+    <div class="pos-details">
+      <div class="pos-detail"><div class="pos-detail-label">Premium 收入</div><div class="pos-detail-val">$1.20</div></div>
+      <div class="pos-detail"><div class="pos-detail-label">當前值</div><div class="pos-detail-val c-red">$2.55</div></div>
+      <div class="pos-detail"><div class="pos-detail-label">P&L</div><div class="pos-detail-val c-red">-113%</div></div>
+      <div class="pos-detail"><div class="pos-detail-label">DTE</div><div class="pos-detail-val c-red">16天</div></div>
+      <div class="pos-detail"><div class="pos-detail-label">當前 Delta</div><div class="pos-detail-val c-red">0.52</div></div>
+    </div>
+    <div class="recommend-box" style="border-color:var(--red)">
+      <strong style="color:var(--red)">▸ 建議：立即止損</strong><br>
+      已超過 2x premium 止損線（$2.40）。Delta 0.52 接近 ATM，繼續持有風險極高。DTE 只剩 16天，Roll 空間有限。建議立即平倉，控制損失於 $135/contract。
+    </div>
+    <div class="pos-action">
+      <button class="action-btn btn-sl">✗ 立即止損 @ $2.55</button>
+      <button class="action-btn btn-roll">↻ Roll Out 30天（最後手段）</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 5: CALCULATOR -->
+<div class="page" id="page-calc">
+  <div class="card">
+    <div class="card-title">Short Put 回報計算器</div>
+    <div class="calc-grid">
+      <div>
+        <div class="param-input-row" style="margin-bottom:10px">
+          <div class="param-label">Strike Price (USD)</div>
+          <input class="param-input" type="number" id="c-strike" value="26" oninput="calcYield()">
+        </div>
+        <div class="param-input-row" style="margin-bottom:10px">
+          <div class="param-label">Premium 收入 (USD)</div>
+          <input class="param-input" type="number" id="c-prem" value="0.65" step="0.01" oninput="calcYield()">
+        </div>
+        <div class="param-input-row" style="margin-bottom:10px">
+          <div class="param-label">DTE（天）</div>
+          <input class="param-input" type="number" id="c-dte" value="30" oninput="calcYield()">
+        </div>
+        <div class="param-input-row" style="margin-bottom:10px">
+          <div class="param-label">Contracts 數量</div>
+          <input class="param-input" type="number" id="c-qty" value="5" oninput="calcYield()">
+        </div>
+        <div class="param-input-row">
+          <div class="param-label">USD/HKD 匯率</div>
+          <input class="param-input" type="number" id="c-fx" value="7.78" step="0.01" oninput="calcYield()">
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="calc-result-box">
+          <div class="calc-result-title">月回報率 (Premium Yield)</div>
+          <div class="calc-big" id="cy-monthly">—</div>
+          <div class="calc-breakdown">
+            <div class="calc-row"><span>Premium / Strike</span><span id="cy-raw">—</span></div>
+            <div class="calc-row"><span>年化回報</span><span id="cy-annual">—</span></div>
+          </div>
+        </div>
+        <div class="calc-result-box">
+          <div class="calc-result-title">每次交易金額 (HKD)</div>
+          <div class="calc-big" id="cy-hkd" style="font-size:20px">—</div>
+          <div class="calc-breakdown">
+            <div class="calc-row"><span>總 Premium 收入</span><span id="cy-total-prem">—</span></div>
+            <div class="calc-row"><span>資金佔用</span><span id="cy-capital">—</span></div>
+            <div class="calc-row"><span>2x Stop Loss 觸發價</span><span id="cy-sl">—</span></div>
+            <div class="calc-row"><span>50% TP 目標價</span><span id="cy-tp">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function switchTab(t,el){
+  document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('page-'+t).classList.add('active');
+}
+
+function updateClock(){
+  const now=new Date();
+  document.getElementById('clock').textContent=
+    now.toLocaleTimeString('en-HK',{hour12:false,timeZone:'Asia/Hong_Kong'})+' HKT';
+}
+setInterval(updateClock,1000);updateClock();
+
+function calcParam(){
+  const env=document.getElementById('p-env').value;
+  const ivr=document.getElementById('p-ivr').value;
+  const trend=document.getElementById('p-trend').value;
+  const spike=document.getElementById('p-spike').value;
+  const spot=parseFloat(document.getElementById('p-spot').value)||28.4;
+  const cap=parseFloat(document.getElementById('p-cap').value)||300;
+
+  let dte,delta,otm,deployPct;
+  if(env==='green'){dte='30-45';delta=0.25;otm=8;deployPct=0.7;}
+  else if(env==='yellow'){dte='21-30';delta=0.20;otm=12;deployPct=0.4;}
+  else{dte='14-21';delta=0.15;otm=18;deployPct=0.2;}
+
+  if(ivr==='high') delta=Math.min(delta+0.05,0.30);
+  if(ivr==='low') delta=Math.max(delta-0.05,0.10);
+  if(trend==='weak'){delta=Math.max(delta-0.03,0.10);otm+=3;}
+  if(spike==='yes'){delta=Math.max(delta-0.05,0.10);otm+=4;}
+
+  const strike=(spot*(1-otm/100)).toFixed(2);
+  const deploy=(cap*deployPct).toFixed(0);
+  const contracts=Math.floor((cap*deployPct*0.15*10000)/(strike*100*7.78));
+
+  document.getElementById('r-dte').textContent=dte;
+  document.getElementById('r-delta').textContent=delta.toFixed(2);
+  document.getElementById('r-otm').textContent=otm+'%';
+  document.getElementById('r-strike').textContent='$'+strike;
+  document.getElementById('r-deploy').textContent='HK$'+deploy+'萬';
+  document.getElementById('r-contracts').textContent=Math.max(1,contracts)+' lots';
+
+  let notes=[];
+  if(spike==='yes') notes.push('⚠ 近期急升，Delta 已下調，等回穩先入場更安全');
+  if(trend==='weak') notes.push('⚠ 趨勢偏弱，OTM 加大緩衝');
+  if(ivr==='high') notes.push('✓ IV Rank 高，premium 豐厚，可積極一點');
+  if(ivr==='low') notes.push('⚠ IV Rank 偏低，premium 薄，考慮跳過');
+  if(env==='red') notes.push('🔴 紅色市況，建議極保守或唔做');
+  document.getElementById('r-note').innerHTML=notes.length?notes.join('<br>'):'✓ 參數正常，可以按建議執行';
+}
+calcParam();
+
+function calcYield(){
+  const strike=parseFloat(document.getElementById('c-strike').value)||26;
+  const prem=parseFloat(document.getElementById('c-prem').value)||0.65;
+  const dte=parseFloat(document.getElementById('c-dte').value)||30;
+  const qty=parseFloat(document.getElementById('c-qty').value)||1;
+  const fx=parseFloat(document.getElementById('c-fx').value)||7.78;
+
+  const monthly=(prem/strike*100).toFixed(2);
+  const annual=(prem/strike*(365/dte)*100).toFixed(1);
+  const totalPremHKD=(prem*100*qty*fx).toFixed(0);
+  const capitalHKD=(strike*100*qty*fx).toFixed(0);
+  const slPrice=(prem*2).toFixed(2);
+  const tpPrice=(prem*0.5).toFixed(2);
+
+  document.getElementById('cy-monthly').textContent=monthly+'%';
+  document.getElementById('cy-raw').textContent=(prem/strike*100).toFixed(2)+'%';
+  document.getElementById('cy-annual').textContent=annual+'% / 年';
+  document.getElementById('cy-hkd').textContent='HK$'+parseInt(totalPremHKD).toLocaleString();
+  document.getElementById('cy-total-prem').textContent='HK$'+parseInt(totalPremHKD).toLocaleString();
+  document.getElementById('cy-capital').textContent='HK$'+parseInt(capitalHKD).toLocaleString();
+  document.getElementById('cy-sl').textContent='$'+slPrice+' (平倉止損)';
+  document.getElementById('cy-tp').textContent='$'+tpPrice+' (目標平倉)';
+}
+calcYield();
+</script>
+</body>
+</html>
